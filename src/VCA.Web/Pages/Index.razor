@@ -1,0 +1,51 @@
+@page "/"
+@using MudBlazor
+
+<PageTitle>VintageCodeAcademy — Aprenda programação de forma gamificada</PageTitle>
+
+<MudText Typo="Typo.h4" GutterBottom="true">Bem-vindo ao VintageCodeAcademy</MudText>
+<MudText Typo="Typo.body1" Class="mb-6">
+    Plataforma educacional gratuita com ensino gamificado de programação.
+    Complete quests, ganhe XP, suba de nível e conquiste badges!
+</MudText>
+
+<MudGrid>
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudIcon Icon="@Icons.Material.Filled.School" Size="Size.Large" Color="Color.Primary" />
+                <MudText Typo="Typo.h6" Class="mt-2">Trilhas de Aprendizado</MudText>
+                <MudText Typo="Typo.body2">Percursos estruturados do básico ao avançado em diversas stacks.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Href="/trails" Variant="Variant.Text" Color="Color.Primary">Explorar Trilhas</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudIcon Icon="@Icons.Material.Filled.EmojiEvents" Size="Size.Large" Color="Color.Warning" />
+                <MudText Typo="Typo.h6" Class="mt-2">Ranking Semanal</MudText>
+                <MudText Typo="Typo.body2">Compete com outros devs e ganhe bônus de XP ao chegar no top 3.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Href="/ranking" Variant="Variant.Text" Color="Color.Primary">Ver Ranking</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="4">
+        <MudCard>
+            <MudCardContent>
+                <MudIcon Icon="@Icons.Material.Filled.Science" Size="Size.Large" Color="Color.Secondary" />
+                <MudText Typo="Typo.h6" Class="mt-2">VCA Labs</MudText>
+                <MudText Typo="Typo.body2">Projetos open-source reais para colocar seu aprendizado em prática.</MudText>
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton Href="/labs" Variant="Variant.Text" Color="Color.Primary">Ver Projetos</MudButton>
+            </MudCardActions>
+        </MudCard>
+    </MudItem>
+</MudGrid>

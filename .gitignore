@@ -1,0 +1,58 @@
+## Ignorar arquivos gerados pelo .NET e IDEs
+
+# Build
+bin/
+obj/
+out/
+
+# .NET
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vs/
+*.ncrunchproject
+*.ncrunchsolution
+
+# Publish
+publish/
+PublishProfiles/
+
+# Secrets e configurações locais
+**/appsettings.Local.json
+**/appsettings.Development.json
+**/secrets.json
+.env
+.env.*
+!.env.example
+
+# NuGet
+*.nupkg
+*.snupkg
+*.nuspec
+packages/
+!**/packages/repositories.config
+.nuget/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Rider / VS Code / VS
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test results
+TestResults/
+coverage/
+*.coveragexml
+*.trx
+
+# Blazor WASM
+wwwroot/service-worker-assets.js

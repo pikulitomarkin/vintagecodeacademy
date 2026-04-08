@@ -1,0 +1,54 @@
+@page "/trails"
+@using MudBlazor
+@inject TrailService TrailService
+
+<PageTitle>Trilhas — VintageCodeAcademy</PageTitle>
+<MudText Typo="Typo.h4" GutterBottom="true">Trilhas de Aprendizado</MudText>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_trails is null || _trails.Count == 0)
+{
+    <MudAlert Severity="Severity.Info">Nenhuma trilha disponível no momento.</MudAlert>
+}
+else
+{
+    <MudGrid>
+        @foreach (var trail in _trails)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard>
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@trail.Title</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">@trail.Stack</MudChip>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudText Typo="Typo.body2">@trail.Description</MudText>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Href="@($"/trails/{trail.Id}")" Variant="Variant.Filled" Color="Color.Primary">
+                            Iniciar Trilha
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private List<TrailDto>? _trails;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _trails = await TrailService.GetTrailsAsync();
+        _loading = false;
+    }
+
+    private record TrailDto(Guid Id, string Title, string Description, string Stack);
+}

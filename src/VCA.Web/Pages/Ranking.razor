@@ -1,0 +1,68 @@
+@page "/ranking"
+@using MudBlazor
+@inject RankingService RankingService
+@implements IAsyncDisposable
+
+<PageTitle>Ranking Semanal — VintageCodeAcademy</PageTitle>
+<MudText Typo="Typo.h4" GutterBottom="true">Ranking Semanal</MudText>
+<MudText Typo="Typo.body2" Class="mb-4">
+    Top 3: +300 XP (1º), +200 XP (2º), +100 XP (3º). Atualização em tempo real.
+</MudText>
+
+@if (_rankings is null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudTable Items="@_rankings" Hover="true" Striped="true">
+        <HeaderContent>
+            <MudTh>#</MudTh>
+            <MudTh>Usuário</MudTh>
+            <MudTh>XP na Semana</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                @if (context.Position <= 3)
+                {
+                    <MudIcon Icon="@Icons.Material.Filled.EmojiEvents"
+                             Color="@GetMedalColor(context.Position)" />
+                }
+                else
+                {
+                    @context.Position
+                }
+            </MudTd>
+            <MudTd>@context.UserName</MudTd>
+            <MudTd>@context.XpEarned XP</MudTd>
+        </RowTemplate>
+    </MudTable>
+}
+
+@code {
+    private List<RankingDto>? _rankings;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rankings = await RankingService.GetWeeklyRankingAsync();
+        await RankingService.SubscribeToUpdatesAsync(OnRankingUpdated);
+    }
+
+    private void OnRankingUpdated(List<RankingDto> updated)
+    {
+        _rankings = updated;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private static Color GetMedalColor(int position) => position switch
+    {
+        1 => Color.Warning,
+        2 => Color.Default,
+        3 => Color.Error,
+        _ => Color.Default
+    };
+
+    public async ValueTask DisposeAsync() => await RankingService.UnsubscribeAsync();
+
+    public record RankingDto(int Position, string UserName, int XpEarned);
+}
