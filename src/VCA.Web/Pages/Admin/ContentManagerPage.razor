@@ -1,0 +1,154 @@
+@page "/admin/conteudo"
+@using VCA.Web.Services
+@using VCA.Web.Components.Admin
+@inject AdminHttpService Admin
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Gestão de Conteúdo — Admin</PageTitle>
+
+<MudText Typo="Typo.caption" Style="opacity:.5;letter-spacing:.18rem;">PAINEL ADMIN</MudText>
+<MudText Typo="Typo.h4" Class="mb-4" Style="font-weight:800;">Gestão de Conteúdo</MudText>
+
+<MudPaper Class="pa-4 mb-4" Style="background:#141414;border:1px solid #222;border-radius:16px;">
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Wrap="Wrap.Wrap">
+        <MudText Typo="Typo.subtitle1" Style="font-weight:700;">Drafts e revisões</MudText>
+        <MudSelect T="string" Label="Filtrar status" Value="_statusFilter"
+                   ValueChanged="OnStatusFilterChanged"
+                   Variant="Variant.Outlined" Dense="true" Style="min-width:200px;">
+            <MudSelectItem Value="@("ALL")">Todos</MudSelectItem>
+            <MudSelectItem Value="@("Draft")">Draft</MudSelectItem>
+            <MudSelectItem Value="@("PendingReview")">Pendente de revisão</MudSelectItem>
+        </MudSelect>
+        <MudSpacer />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="ReloadAsync">Recarregar</MudButton>
+    </MudStack>
+</MudPaper>
+
+@if (_loading)
+{
+    <MudSkeleton Height="60px" Class="mb-2" />
+    <MudSkeleton Height="60px" Class="mb-2" />
+    <MudSkeleton Height="60px" Class="mb-2" />
+}
+else if (_drafts is null || _drafts.Items.Count == 0)
+{
+    <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">Nenhuma aula em rascunho ou pendente.</MudAlert>
+}
+else
+{
+    <MudTable Items="@_filteredItems" Hover="true" Dense="true"
+              Style="background:#141414;border:1px solid #222;border-radius:16px;">
+        <HeaderContent>
+            <MudTh>Título</MudTh>
+            <MudTh>Status</MudTh>
+            <MudTh>Chunks</MudTh>
+            <MudTh>Quizzes</MudTh>
+            <MudTh>Custo IA</MudTh>
+            <MudTh>Criada em</MudTh>
+            <MudTh Style="text-align:right;">Ações</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                <MudText Typo="Typo.body2" Style="font-weight:600;">@context.Title</MudText>
+                <MudText Typo="Typo.caption" Style="opacity:.5;">@context.LessonId</MudText>
+            </MudTd>
+            <MudTd>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@StatusColor(context.Status)" Variant="Variant.Filled">@context.Status</MudChip>
+            </MudTd>
+            <MudTd>@context.ChunksProcessed</MudTd>
+            <MudTd>@context.QuizCount</MudTd>
+            <MudTd>$@context.TotalCostUsd.ToString("F4")</MudTd>
+            <MudTd>@context.CreatedAt.ToLocalTime().ToString("dd/MM/yy HH:mm")</MudTd>
+            <MudTd Style="text-align:right;">
+                <MudIconButton Icon="@Icons.Material.Filled.UploadFile"
+                               Color="Color.Primary"
+                               Title="Processar PDF"
+                               OnClick="@(() => OpenUploadDialog(context.LessonId, context.Title))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility"
+                               Color="Color.Default"
+                               Title="Revisar"
+                               OnClick="@(() => Nav.NavigateTo($"/admin/revisar/{context.LessonId}"))" />
+            </MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudPagination Count="@_pageCount" Selected="@_page" SelectedChanged="OnPageChanged" Class="pa-3" />
+        </PagerContent>
+    </MudTable>
+}
+
+@code {
+    private LessonDraftsPageDto? _drafts;
+    private bool _loading = true;
+    private int _page = 1;
+    private const int PageSize = 20;
+    private string _statusFilter = "ALL";
+
+    private IEnumerable<LessonDraftItemDto> _filteredItems =>
+        _drafts?.Items.Where(i => _statusFilter == "ALL" || i.Status == _statusFilter)
+        ?? Enumerable.Empty<LessonDraftItemDto>();
+
+    private int _pageCount =>
+        _drafts is null ? 0 : (int)Math.Ceiling(_drafts.TotalCount / (double)PageSize);
+
+    protected override Task OnInitializedAsync() => ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _drafts = await Admin.GetDraftsAsync(_page, PageSize);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar drafts: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task OnPageChanged(int page)
+    {
+        _page = page;
+        await ReloadAsync();
+    }
+
+    private void OnStatusFilterChanged(string value)
+    {
+        _statusFilter = value;
+        StateHasChanged();
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Draft" => Color.Warning,
+        "PendingReview" => Color.Info,
+        "Published" => Color.Success,
+        "Archived" => Color.Default,
+        _ => Color.Default
+    };
+
+    private async Task OpenUploadDialog(Guid lessonId, string title)
+    {
+        var parameters = new DialogParameters
+        {
+            ["LessonId"] = lessonId,
+            ["LessonTitle"] = title
+        };
+        var options = new DialogOptions { CloseOnEscapeKey = false, FullWidth = true, MaxWidth = MaxWidth.Medium };
+        var dlg = await Dialogs.ShowAsync<ProcessPdfDialog>("Processar PDF", parameters, options);
+        var result = await dlg.Result;
+        if (!result.Canceled)
+        {
+            Snackbar.Add("Pipeline concluído. Atualizando lista...", Severity.Success);
+            await ReloadAsync();
+        }
+    }
+}

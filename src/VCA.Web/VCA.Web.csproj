@@ -11,6 +11,9 @@
     <!-- MudBlazor UI -->
     <PackageReference Include="MudBlazor" Version="6.21.0" />
 
+    <!-- HttpClientFactory para clients tipados por feature -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+
     <!-- SignalR client para ranking em tempo real -->
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.4" />
 

@@ -1,0 +1,121 @@
+@page "/admin"
+@using VCA.Web.Services
+@inject AdminHttpService Admin
+
+<PageTitle>Dashboard Admin — VintageCodeAcademy</PageTitle>
+
+<MudText Typo="Typo.caption" Style="opacity:.5;letter-spacing:.18rem;">PAINEL ADMINISTRATIVO</MudText>
+<MudText Typo="Typo.h4" Class="mb-6" Style="font-weight:800;">Dashboard</MudText>
+
+@if (_loading)
+{
+    <MudGrid>
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudItem xs="12" sm="6" md="3">
+                <MudSkeleton Height="120px" Style="border-radius:14px;" />
+            </MudItem>
+        }
+    </MudGrid>
+}
+else if (_error is not null)
+{
+    <MudAlert Severity="Severity.Error" Variant="Variant.Outlined">@_error</MudAlert>
+}
+else if (_metrics is not null)
+{
+    <MudGrid>
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard("Aulas publicadas", _metrics.PublishedLessons.ToString(), Icons.Material.Filled.School, "#00C9C9")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard("Drafts", _metrics.DraftLessons.ToString(), Icons.Material.Filled.EditNote, "#FFB347")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard("Pendentes de revisão", _metrics.PendingReviewLessons.ToString(), Icons.Material.Filled.Pending, "#FF6B6B")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard("Quizzes totais", _metrics.TotalQuizQuestions.ToString(), Icons.Material.Filled.Quiz, "#9C7BFF")
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard($"Custo IA mensal", $"${_metrics.MonthlyAiCostUsd:F2}", Icons.Material.Filled.AttachMoney, "#34D399")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard("Custo IA total", $"${_metrics.TotalAiCostUsd:F2}", Icons.Material.Filled.Savings, "#34D399")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard("Score médio quiz", $"{_metrics.AverageQuizScore:F1}", Icons.Material.Filled.EmojiEvents, "#F59E0B")
+        </MudItem>
+        <MudItem xs="12" sm="6" md="3">
+            @MetricCard("Usuários ativos (7d)", _metrics.ActiveUsersLastWeek.ToString(), Icons.Material.Filled.People, "#00C9C9")
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Class="pa-4" Style="background:#141414;border:1px solid #222;border-radius:16px;">
+                <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:700;">XP distribuído (últimos 7 dias)</MudText>
+                @if (_metrics.XpDistributionLast7Days?.Count > 0)
+                {
+                    <MudChart ChartType="ChartType.Bar"
+                              ChartSeries="@_chartSeries"
+                              XAxisLabels="@_chartLabels"
+                              Width="100%"
+                              Height="280px" />
+                }
+                else
+                {
+                    <MudText Typo="Typo.body2" Style="opacity:.55;">Sem dados de XP nos últimos 7 dias.</MudText>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private DashboardMetricsDto? _metrics;
+    private bool _loading = true;
+    private string? _error;
+    private List<ChartSeries> _chartSeries = new();
+    private string[] _chartLabels = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _metrics = await Admin.GetDashboardAsync();
+            if (_metrics is { XpDistributionLast7Days.Count: > 0 })
+            {
+                _chartLabels = _metrics.XpDistributionLast7Days.Select(p => p.Day.ToString("dd/MM")).ToArray();
+                _chartSeries = new List<ChartSeries>
+                {
+                    new()
+                    {
+                        Name = "XP",
+                        Data = _metrics.XpDistributionLast7Days.Select(p => (double)p.TotalXp).ToArray()
+                    }
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Falha ao carregar métricas: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private RenderFragment MetricCard(string label, string value, string icon, string color) => __builder =>
+    {
+        <MudPaper Class="pa-4" Style="@($"background:#141414;border:1px solid #222;border-radius:16px;border-left:4px solid {color};height:100%;")">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudIcon Icon="@icon" Style="@($"color:{color};font-size:2.2rem;")" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.caption" Style="opacity:.55;">@label</MudText>
+                    <MudText Typo="Typo.h5" Style="font-weight:800;">@value</MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+    };
+}

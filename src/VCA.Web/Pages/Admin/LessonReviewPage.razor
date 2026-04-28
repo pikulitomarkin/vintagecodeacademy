@@ -1,0 +1,367 @@
+@page "/admin/revisar/{LessonId:guid}"
+@using System.Text.Json
+@using VCA.Web.Services
+@using VCA.Web.Components.Shared
+@inject AdminHttpService Admin
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+
+<PageTitle>Revisar Aula — Admin</PageTitle>
+
+@if (_loading)
+{
+    <MudSkeleton Width="40%" Height="40px" Class="mb-2" />
+    <MudSkeleton Width="100%" Height="300px" />
+}
+else if (_detail is null)
+{
+    <MudAlert Severity="Severity.Error">Aula não encontrada.</MudAlert>
+}
+else
+{
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => Nav.NavigateTo("/admin/conteudo"))" />
+        <MudText Typo="Typo.caption" Style="opacity:.55;">@_detail.ModuleTitle</MudText>
+        <MudChip T="string" Size="Size.Small" Color="@StatusColor(_detail.Status)" Variant="Variant.Filled">
+            @_detail.Status
+        </MudChip>
+        <MudSpacer />
+        <MudText Typo="Typo.caption" Style="opacity:.55;">
+            Custo IA: <strong>$@_detail.TotalCostUsd.ToString("F4")</strong>
+        </MudText>
+    </MudStack>
+
+    <MudText Typo="Typo.h4" Class="mb-4" Style="font-weight:800;">@_detail.Title</MudText>
+
+    <MudGrid>
+        <!-- Coluna esquerda: editor -->
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Style="background:#141414;border:1px solid #222;border-radius:16px;">
+                <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:700;">Editor</MudText>
+
+                <MudTextField @bind-Value="_title" Label="Título" Variant="Variant.Outlined" Class="mb-3" />
+                <MudNumericField T="int" @bind-Value="_xpReward" Label="XP Reward" Min="0" Max="1000"
+                                 Variant="Variant.Outlined" Class="mb-3" />
+
+                <MudTextField @bind-Value="_mission" Label="🎯 Missão" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+                <MudTextField @bind-Value="_realContext" Label="🔥 Contexto Real" Variant="Variant.Outlined" Lines="3" Class="mb-3" />
+                <MudTextField @bind-Value="_concept" Label="📚 Conceito (Markdown)" Variant="Variant.Outlined" Lines="6" Class="mb-3" />
+
+                <MudTextField @bind-Value="_challengeDescription" Label="💻 Desafio Rápido" Variant="Variant.Outlined" Lines="2" Class="mb-2" />
+                <MudNumericField T="int" @bind-Value="_challengeXp" Label="XP do desafio" Min="0" Max="200"
+                                 Variant="Variant.Outlined" Class="mb-3" />
+
+                <MudTextField @bind-Value="_exampleLanguage" Label="🧩 Exemplo: linguagem" Variant="Variant.Outlined" Class="mb-2" />
+                <MudTextField @bind-Value="_exampleCode" Label="🧩 Código" Variant="Variant.Outlined" Lines="6" Class="mb-2"
+                              Style="font-family:monospace;" />
+                <MudTextField @bind-Value="_exampleExplanation" Label="🧩 Explicação" Variant="Variant.Outlined" Lines="2" Class="mb-3" />
+
+                <MudTextField @bind-Value="_summary" Label="🏆 Resumo" Variant="Variant.Outlined" Lines="3" Class="mb-4" />
+
+                <MudExpansionPanels MultiExpansion="true">
+                    <MudExpansionPanel Text="@($"Quizzes ({_quizzes.Count})")">
+                        @for (var i = 0; i < _quizzes.Count; i++)
+                        {
+                            var idx = i;
+                            var quiz = _quizzes[idx];
+                            <MudPaper Class="pa-3 mb-3" Elevation="0" Style="background:#1A1A1A;border:1px solid #262626;border-radius:12px;">
+                                <MudText Typo="Typo.caption" Style="opacity:.55;">Quiz #@(idx + 1)</MudText>
+                                <MudTextField Value="@quiz.Question"
+                                              ValueChanged="@((string v) => UpdateQuizField(idx, q => q with { Question = v }))"
+                                              T="string" Label="Pergunta" Variant="Variant.Outlined" Class="mb-2" />
+                                @for (var j = 0; j < quiz.Options.Count; j++)
+                                {
+                                    var optIdx = j;
+                                    <MudTextField Value="@quiz.Options[optIdx]"
+                                                  ValueChanged="@((string v) => UpdateQuizOption(idx, optIdx, v))"
+                                                  T="string" Label="@($"Opção {(char)('A' + optIdx)}")"
+                                                  Variant="Variant.Outlined" Class="mb-1" />
+                                }
+                                <MudNumericField T="int" Value="@quiz.CorrectIndex"
+                                                 ValueChanged="@((int v) => UpdateQuizField(idx, q => q with { CorrectIndex = v }))"
+                                                 Label="Índice correto (0-based)"
+                                                 Min="0" Max="@(quiz.Options.Count - 1)"
+                                                 Variant="Variant.Outlined" Class="mb-2" />
+                                <MudTextField Value="@quiz.Explanation"
+                                              ValueChanged="@((string v) => UpdateQuizField(idx, q => q with { Explanation = v }))"
+                                              T="string" Label="Explicação" Variant="Variant.Outlined" Lines="2" />
+                            </MudPaper>
+                        }
+                    </MudExpansionPanel>
+
+                    <MudExpansionPanel Text="@($"Chunks de origem ({_detail.Chunks.Count})")">
+                        @foreach (var c in _detail.Chunks)
+                        {
+                            <MudPaper Class="pa-3 mb-2" Elevation="0" Style="background:#0F0F0F;border:1px solid #1E1E1E;border-radius:10px;">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Class="mb-1">
+                                    <MudText Typo="Typo.caption" Style="opacity:.55;">Chunk #@c.ChunkIndex</MudText>
+                                    <MudSpacer />
+                                    <MudButton Size="Size.Small"
+                                               Variant="Variant.Outlined"
+                                               StartIcon="@Icons.Material.Filled.Refresh"
+                                               OnClick="@(() => RegenerateChunkAsync(c.ChunkIndex))"
+                                               Disabled="_regenerating">
+                                        Regenerar
+                                    </MudButton>
+                                </MudStack>
+                                <MudText Typo="Typo.caption" Style="white-space:pre-wrap;font-family:monospace;opacity:.7;">
+                                    @(c.RawText.Length > 400 ? c.RawText[..400] + "…" : c.RawText)
+                                </MudText>
+                            </MudPaper>
+                        }
+                    </MudExpansionPanel>
+                </MudExpansionPanels>
+
+                <MudStack Row="true" Spacing="2" Class="mt-4">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Save"
+                               OnClick="SaveAsync"
+                               Disabled="_saving">
+                        @(_saving ? "Salvando..." : "Salvar")
+                    </MudButton>
+                    <MudButton Variant="Variant.Filled" Color="Color.Success"
+                               StartIcon="@Icons.Material.Filled.Publish"
+                               OnClick="PublishAsync"
+                               Disabled="_saving">
+                        Publicar
+                    </MudButton>
+                    <MudSpacer />
+                    <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                               StartIcon="@Icons.Material.Filled.Archive"
+                               OnClick="ArchiveAsync">
+                        Arquivar
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Coluna direita: preview -->
+        <MudItem xs="12" md="6">
+            <MudPaper Class="pa-4" Style="background:#141414;border:1px solid #222;border-radius:16px;position:sticky;top:88px;">
+                <MudText Typo="Typo.subtitle1" Class="mb-3" Style="font-weight:700;">Preview do aluno</MudText>
+                <LessonContentPreview Title="@_title"
+                                      XpReward="@_xpReward"
+                                      Mission="@_mission"
+                                      RealContext="@_realContext"
+                                      Concept="@_concept"
+                                      ChallengeDescription="@_challengeDescription"
+                                      ChallengeXp="@_challengeXp"
+                                      ExampleLanguage="@_exampleLanguage"
+                                      ExampleCode="@_exampleCode"
+                                      ExampleExplanation="@_exampleExplanation"
+                                      Summary="@_summary" />
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public Guid LessonId { get; set; }
+
+    private LessonDraftDetailDto? _detail;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _regenerating;
+
+    private string _title = string.Empty;
+    private int _xpReward;
+    private string _mission = string.Empty;
+    private string _realContext = string.Empty;
+    private string _concept = string.Empty;
+    private string _challengeDescription = string.Empty;
+    private int _challengeXp = 15;
+    private string _exampleLanguage = "csharp";
+    private string _exampleCode = string.Empty;
+    private string _exampleExplanation = string.Empty;
+    private string _summary = string.Empty;
+
+    private List<DraftQuizDto> _quizzes = new();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _detail = await Admin.GetDraftDetailAsync(LessonId);
+            if (_detail is not null)
+            {
+                _title = _detail.Title;
+                _xpReward = _detail.XpReward;
+                _quizzes = _detail.Quizzes.ToList();
+                LoadContent(_detail.ContentJson);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void LoadContent(string contentJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(contentJson) ? "{}" : contentJson);
+            var root = doc.RootElement;
+            _mission = GetString(root, "mission");
+            _realContext = GetString(root, "realContext");
+            _concept = GetString(root, "concept");
+            _summary = GetString(root, "summary");
+
+            if (root.TryGetProperty("quickChallenge", out var qc))
+            {
+                _challengeDescription = GetString(qc, "description");
+                _challengeXp = qc.TryGetProperty("xp", out var xp) && xp.TryGetInt32(out var xpInt) ? xpInt : 15;
+            }
+            if (root.TryGetProperty("example", out var ex))
+            {
+                _exampleLanguage = GetString(ex, "language", "csharp");
+                _exampleCode = GetString(ex, "code");
+                _exampleExplanation = GetString(ex, "explanation");
+            }
+            if (root.TryGetProperty("xpReward", out var xpReward) && xpReward.TryGetInt32(out var xpr))
+            {
+                if (_xpReward == 0) _xpReward = xpr;
+            }
+        }
+        catch
+        {
+            Snackbar.Add("Conteúdo JSON inválido — preencha manualmente.", Severity.Warning);
+        }
+    }
+
+    private static string GetString(JsonElement el, string prop, string fallback = "")
+        => el.TryGetProperty(prop, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? fallback : fallback;
+
+    private string BuildContentJson()
+    {
+        var obj = new
+        {
+            mission = _mission,
+            realContext = _realContext,
+            concept = _concept,
+            quickChallenge = new { description = _challengeDescription, xp = _challengeXp },
+            example = new { language = _exampleLanguage, code = _exampleCode, explanation = _exampleExplanation },
+            summary = _summary,
+            xpReward = _xpReward
+        };
+        return JsonSerializer.Serialize(obj);
+    }
+
+    private void UpdateQuizField(int idx, Func<DraftQuizDto, DraftQuizDto> mutate)
+    {
+        _quizzes[idx] = mutate(_quizzes[idx]);
+    }
+
+    private void UpdateQuizOption(int idx, int optIdx, string value)
+    {
+        var quiz = _quizzes[idx];
+        var opts = quiz.Options.ToList();
+        opts[optIdx] = value;
+        _quizzes[idx] = quiz with { Options = opts };
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_detail is null) return;
+        _saving = true;
+        try
+        {
+            var body = new UpdateLessonContentRequest(
+                ContentJson: BuildContentJson(),
+                XpReward: _xpReward,
+                Title: _title,
+                Quizzes: _quizzes.Select(q => new UpdatedQuizDto(q.Id, q.Question, q.Options, q.CorrectIndex, q.Explanation)).ToList());
+
+            var ok = await Admin.UpdateContentAsync(LessonId, body);
+            Snackbar.Add(ok ? "Aula salva." : "Falha ao salvar.", ok ? Severity.Success : Severity.Error);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task PublishAsync()
+    {
+        var confirm = await Dialogs.ShowMessageBox("Publicar aula",
+            "Confirma a publicação? A aula ficará visível para todos os alunos.",
+            yesText: "Publicar", cancelText: "Cancelar");
+        if (confirm != true) return;
+
+        // Salva primeiro
+        await SaveAsync();
+        var ok = await Admin.PublishAsync(LessonId);
+        if (ok)
+        {
+            Snackbar.Add("Aula publicada com sucesso.", Severity.Success);
+            await LoadAsync();
+        }
+        else
+        {
+            Snackbar.Add("Falha ao publicar — verifique conteúdo e quizzes.", Severity.Error);
+        }
+    }
+
+    private async Task ArchiveAsync()
+    {
+        var confirm = await Dialogs.ShowMessageBox("Arquivar aula",
+            "Tem certeza? A aula ficará invisível para os alunos.",
+            yesText: "Arquivar", cancelText: "Cancelar");
+        if (confirm != true) return;
+
+        var ok = await Admin.ArchiveAsync(LessonId);
+        if (ok)
+        {
+            Snackbar.Add("Aula arquivada.", Severity.Info);
+            Nav.NavigateTo("/admin/conteudo");
+        }
+    }
+
+    private async Task RegenerateChunkAsync(int chunkIndex)
+    {
+        var confirm = await Dialogs.ShowMessageBox("Regenerar chunk",
+            $"Re-executar a IA para o chunk #{chunkIndex}? Isso terá custo adicional.",
+            yesText: "Regenerar", cancelText: "Cancelar");
+        if (confirm != true) return;
+
+        _regenerating = true;
+        try
+        {
+            var result = await Admin.RegenerateChunkAsync(LessonId, chunkIndex);
+            if (result is not null)
+            {
+                Snackbar.Add($"Chunk regenerado. Custo: ${result.CostUsd:F4}", Severity.Success);
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add("Falha ao regenerar chunk.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _regenerating = false;
+        }
+    }
+
+    private static Color StatusColor(string status) => status switch
+    {
+        "Draft" => Color.Warning,
+        "PendingReview" => Color.Info,
+        "Published" => Color.Success,
+        "Archived" => Color.Default,
+        _ => Color.Default
+    };
+}

@@ -1,0 +1,249 @@
+@page "/aulas/{LessonId:guid}"
+@using VCA.Web.Services
+@using VCA.Web.Components.Quiz
+@inject CourseHttpService CourseService
+@inject NavigationManager Nav
+
+<PageTitle>@(_lesson?.Title ?? "Aula") — VintageCodeAcademy</PageTitle>
+
+@if (_loading)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+        <MudSkeleton Width="50%" Height="40px" Class="mb-2" />
+        <MudSkeleton Width="30%" Height="20px" Class="mb-8" />
+        @for (var i = 0; i < 5; i++)
+        {
+            <MudSkeleton Width="100%" Height="96px" Class="mb-4" Style="border-radius:12px;" />
+        }
+    </MudContainer>
+}
+else if (_lesson is null)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-12 text-center">
+        <MudIcon Icon="Icons.Material.Filled.ErrorOutline" Style="font-size:4rem;opacity:.4;" />
+        <MudText Typo="Typo.h6" Class="mt-4" Style="opacity:.6;">Aula não encontrada.</MudText>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-6" Style="padding-bottom:120px;">
+
+        <!-- Breadcrumb / Header -->
+        <MudText Typo="Typo.caption" Style="opacity:.5;margin-bottom:4px;">AULA</MudText>
+        <MudText Typo="Typo.h5" Style="font-weight:800;margin-bottom:4px;">@_lesson.Title</MudText>
+        <div class="d-flex align-center gap-2 mb-6">
+            <MudIcon Icon="Icons.Material.Filled.Bolt" Size="Size.Small" Style="color:#00C9C9;" />
+            <MudText Typo="Typo.body2" Style="color:#00C9C9;font-weight:600;">+@_lesson.XpReward XP ao concluir</MudText>
+            @if (_lesson.CompletedByUser)
+            {
+                <MudChip Size="Size.Small" Color="Color.Success" Variant="Variant.Filled"
+                         Icon="Icons.Material.Filled.CheckCircle" Style="height:22px;font-size:.7rem;">
+                    Concluída
+                </MudChip>
+            }
+        </div>
+
+        <!-- 🎯 Missão -->
+        @if (!string.IsNullOrWhiteSpace(_lesson.Content.Mission))
+        {
+            <MudAlert Severity="Severity.Info" Class="mb-4"
+                      Style="background:rgba(0,201,201,.1);border:1px solid rgba(0,201,201,.3);border-radius:14px;">
+                <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:4px;">🎯 Missão</MudText>
+                <MudText Typo="Typo.body2">@_lesson.Content.Mission</MudText>
+            </MudAlert>
+        }
+
+        <!-- 🔥 Contexto Real -->
+        @if (!string.IsNullOrWhiteSpace(_lesson.Content.RealContext))
+        {
+            <MudCard Class="mb-4" Style="background:#141414;border:1px solid #222;border-radius:14px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:6px;color:var(--mud-palette-primary);">
+                        🔥 Contexto Real
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="line-height:1.7;opacity:.85;">@_lesson.Content.RealContext</MudText>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- 📚 Conceito -->
+        @if (!string.IsNullOrWhiteSpace(_lesson.Content.Concept))
+        {
+            <MudCard Class="mb-4" Style="background:#1A1A1A;border:1px solid #262626;border-radius:14px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:8px;">📚 Conceito</MudText>
+                    <div class="lesson-concept">
+                        @((MarkupString)RenderSimpleMarkdown(_lesson.Content.Concept))
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- 💻 Desafio Rápido -->
+        @if (!string.IsNullOrWhiteSpace(_lesson.Content.QuickChallenge))
+        {
+            <MudCard Class="mb-4"
+                     Style="background:linear-gradient(135deg,rgba(0,201,201,.08),rgba(0,122,122,.06));border:1px solid rgba(0,201,201,.25);border-radius:14px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:8px;color:var(--mud-palette-primary);">
+                        💻 Desafio Rápido
+                    </MudText>
+                    <MudText Typo="Typo.body2" Style="line-height:1.7;margin-bottom:16px;">
+                        @_lesson.Content.QuickChallenge
+                    </MudText>
+                    @if (!_challengeCompleted)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   Style="border-radius:10px;font-weight:600;"
+                                   StartIcon="Icons.Material.Filled.Bolt"
+                                   Loading="@_challengeLoading"
+                                   OnClick="CompleteQuickChallengeAsync">
+                            Completar Desafio (+15 XP)
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Success"
+                                  Style="background:rgba(0,230,118,.1);border:1px solid rgba(0,230,118,.3);border-radius:10px;">
+                            ⚡ +15 XP conquistados!
+                        </MudAlert>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- 🧩 Exemplo -->
+        @if (!string.IsNullOrWhiteSpace(_lesson.Content.Example))
+        {
+            <MudCard Class="mb-4"
+                     Style="background:#0A0A0A;border:1px solid #1E1E1E;border-radius:14px;overflow:hidden;">
+                <div Style="background:#1E1E1E;padding:8px 16px;display:flex;align-items:center;gap:8px;">
+                    <div style="width:12px;height:12px;border-radius:50%;background:#FF5F57;"></div>
+                    <div style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;"></div>
+                    <div style="width:12px;height:12px;border-radius:50%;background:#28C840;"></div>
+                    <MudText Typo="Typo.caption" Style="margin-left:8px;opacity:.4;font-family:monospace;">
+                        🧩 Exemplo
+                    </MudText>
+                </div>
+                <MudCardContent Style="padding:16px;">
+                    <pre style="font-family:'Courier New',monospace;font-size:.85rem;line-height:1.6;color:#ABB2BF;white-space:pre-wrap;word-break:break-all;margin:0;">@_lesson.Content.Example</pre>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- ⚡ Quiz -->
+        @if (!_lesson.CompletedByUser || _showQuiz)
+        {
+            <MudCard Class="mb-4" Style="background:#1A1A1A;border:1px solid #262626;border-radius:14px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:8px;">⚡ Quiz</MudText>
+                    @if (!_showQuiz)
+                    {
+                        <MudText Typo="Typo.body2" Style="opacity:.7;margin-bottom:12px;">
+                            Teste seu conhecimento e ganhe até +30 XP
+                        </MudText>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                                   Style="border-radius:10px;"
+                                   StartIcon="Icons.Material.Filled.Quiz"
+                                   OnClick="@(() => _showQuiz = true)">
+                            Iniciar Quiz
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <QuizComponent LessonId="@LessonId"
+                                       OnQuizCompleted="@HandleQuizCompleted" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- 🏆 Resumo + Conclusão -->
+        @if (!string.IsNullOrWhiteSpace(_lesson.Content.Summary))
+        {
+            <MudCard Class="mb-6" Style="background:#1A1A1A;border:1px solid #262626;border-radius:14px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:8px;">🏆 Resumo</MudText>
+                    <MudText Typo="Typo.body2" Style="line-height:1.7;opacity:.85;">@_lesson.Content.Summary</MudText>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- Card de XP ganho ao concluir -->
+        @if (_xpEvent is not null && _showXpCard)
+        {
+            <MudCard Class="mb-6 xp-card"
+                     Style="background:linear-gradient(135deg,rgba(0,201,201,.18),rgba(0,122,122,.12));border:2px solid rgba(0,201,201,.5);border-radius:18px;">
+                <MudCardContent Class="text-center py-6">
+                    <MudText Typo="Typo.h3" Style="color:#00C9C9;font-weight:800;margin-bottom:4px;">
+                        +@_xpEvent.XpAwarded XP
+                    </MudText>
+                    <MudText Typo="Typo.body1" Style="opacity:.8;">Aula concluída!</MudText>
+                    @if (_xpEvent.NewLevel is not null)
+                    {
+                        <MudChip Class="mt-3" Color="Color.Primary" Variant="Variant.Filled"
+                                 Icon="Icons.Material.Filled.Stars"
+                                 Style="font-weight:700;font-size:1rem;">
+                            Novo nível: @_xpEvent.NewLevel 🎉
+                        </MudChip>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+    </MudContainer>
+
+    <!-- Barra de navegação fixo (anterior / Concluir & próxima) -->
+    <div Style="position:fixed;bottom:0;left:0;right:0;padding:12px 20px;background:linear-gradient(to top,#0D0D0D 70%,transparent);z-index:100;border-top:1px solid #1A1A1A;">
+        <MudContainer MaxWidth="MaxWidth.Medium">
+            <div class="d-flex gap-2">
+                @if (_lesson.PreviousLessonId.HasValue)
+                {
+                    <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                               Style="border-radius:12px;flex:0 0 auto;"
+                               StartIcon="Icons.Material.Filled.ArrowBack"
+                               OnClick="@GoPrevious">
+                        Anterior
+                    </MudButton>
+                }
+
+                @if (!_lesson.CompletedByUser && !_completing)
+                {
+                    <MudButton FullWidth Variant="Variant.Filled" Color="Color.Primary"
+                               Style="border-radius:12px;font-weight:700;height:48px;box-shadow:0 4px 20px rgba(0,201,201,.3);"
+                               Loading="@_completing"
+                               OnClick="CompleteLessonAsync">
+                        Concluir Aula 🏆
+                    </MudButton>
+                }
+                else if (_lesson.NextLessonId.HasValue)
+                {
+                    <MudButton FullWidth Variant="Variant.Filled" Color="Color.Primary"
+                               Style="border-radius:12px;font-weight:700;height:48px;box-shadow:0 4px 20px rgba(0,201,201,.3);"
+                               EndIcon="Icons.Material.Filled.ArrowForward"
+                               OnClick="@GoNext">
+                        Próxima Aula
+                    </MudButton>
+                }
+            </div>
+        </MudContainer>
+    </div>
+}
+
+<style>
+    .lesson-concept p { margin-bottom: .75rem; line-height: 1.75; opacity: .85; }
+    .lesson-concept strong { color: var(--mud-palette-primary); }
+    .lesson-concept code {
+        background: #0A0A0A;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: 'Courier New', monospace;
+        font-size: .85em;
+        color: #ABB2BF;
+    }
+    .xp-card { animation: xp-pop .4s cubic-bezier(.175,.885,.32,1.275) both; }
+    @@keyframes xp-pop {
+        from { transform: scale(.85); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+    }
+</style>

@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <RootNamespace>VCA.IntegrationTests</RootNamespace>
+    <CollectCoverage>true</CollectCoverage>
+    <CoverletOutputFormat>cobertura</CoverletOutputFormat>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,7 +17,12 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="FluentAssertions" Version="6.12.0" />
+    <PackageReference Include="Moq" Version="4.20.70" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
+    <PackageReference Include="coverlet.collector" Version="6.0.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
 
     <!-- TestContainers para subir PostgreSQL em container durante os testes -->
     <PackageReference Include="Testcontainers" Version="3.8.0" />
@@ -30,6 +37,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\VCA.API\VCA.API.csproj" />
     <ProjectReference Include="..\..\src\VCA.Infrastructure\VCA.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\VCA.Application\VCA.Application.csproj" />
   </ItemGroup>
 
 </Project>

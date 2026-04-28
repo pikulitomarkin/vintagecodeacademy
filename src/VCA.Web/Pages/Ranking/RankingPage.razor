@@ -1,0 +1,154 @@
+@page "/ranking"
+@using VCA.Web.Services
+@using VCA.Web.Components.Ranking
+@inject UserHttpService UserService
+@inject RankingService RankingService
+@inject IConfiguration Configuration
+@inject AuthService AuthService
+@implements IAsyncDisposable
+
+<PageTitle>Ranking — VintageCodeAcademy</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+
+    <MudText Typo="Typo.h4" Class="mb-1" Style="color:var(--mud-palette-primary);">Ranking</MudText>
+    <MudText Typo="Typo.body2" Class="mb-5" Style="opacity:.6;">
+        Top 3 semanal: +500 XP 🥇 / +300 XP 🥈 / +100 XP 🥉 — atualização em tempo real
+    </MudText>
+
+    <!-- Card da posição do usuário logado -->
+    @if (_myPosition is not null)
+    {
+        <MudCard Class="mb-5" Style="background:linear-gradient(135deg,rgba(0,201,201,.12),rgba(0,122,122,.07));border:1px solid rgba(0,201,201,.3);border-radius:16px;">
+            <MudCardContent Class="py-3">
+                <div class="d-flex align-center justify-space-between flex-wrap gap-2">
+                    <div class="d-flex align-center gap-3">
+                        <MudIcon Icon="Icons.Material.Filled.Person" Style="color:var(--mud-palette-primary);" />
+                        <div>
+                            <MudText Typo="Typo.body2" Style="opacity:.6;">Sua posição esta semana</MudText>
+                            <MudText Typo="Typo.h6" Style="font-weight:700;">
+                                @PositionLabel(_myPosition.Position)
+                            </MudText>
+                        </div>
+                    </div>
+                    <MudChip Color="Color.Primary" Variant="Variant.Filled"
+                             Icon="Icons.Material.Filled.Bolt"
+                             Style="font-weight:700;">
+                        @_myPosition.XpEarnedThisWeek XP
+                    </MudChip>
+                </div>
+            </MudCardContent>
+        </MudCard>
+    }
+
+    <!-- Tabs -->
+    <MudTabs @ref="_tabs" Elevation="0" Rounded ApplyEffectsToContainer
+             ActivePanelIndexChanged="OnTabChanged"
+             PanelClass="pt-4"
+             Style="background:transparent;">
+
+        <!-- Semanal -->
+        <MudTabPanel Text="Semanal" Icon="Icons.Material.Filled.CalendarToday">
+            @RenderTable(_weeklyEntries, _loadingWeekly)
+        </MudTabPanel>
+
+        <!-- Mensal -->
+        <MudTabPanel Text="Mensal" Icon="Icons.Material.Filled.DateRange">
+            @RenderTable(_monthlyEntries, _loadingMonthly)
+        </MudTabPanel>
+
+        <!-- Hall of Fame -->
+        <MudTabPanel Text="Hall of Fame" Icon="Icons.Material.Filled.EmojiEvents">
+            @RenderTable(_hallOfFameEntries, _loadingHallOfFame, isAllTime: true)
+        </MudTabPanel>
+    </MudTabs>
+
+</MudContainer>
+
+@* Template da tabela de ranking *@
+@code {
+    private RenderFragment RenderTable(
+        List<RankingRowDto> entries, bool loading, bool isAllTime = false) => __builder =>
+    {
+        if (loading)
+        {
+            <MudStack Spacing="2">
+                @for (var i = 0; i < 8; i++)
+                {
+                    <MudSkeleton Width="100%" Height="56px" Style="border-radius:10px;" />
+                }
+            </MudStack>
+        }
+        else if (entries.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info" Style="border-radius:10px;background:#1A1A1A;">
+                Nenhum dado disponível ainda.
+            </MudAlert>
+        }
+        else
+        {
+            <div class="ranking-table">
+                @foreach (var row in entries)
+                {
+                    var isMe = row.UserId == _myUserId;
+                    <div class="ranking-row @(isMe ? "ranking-row--me" : "") @(row.Position <= 3 ? $"ranking-row--top{row.Position}" : "")">
+                        <!-- Posição -->
+                        <div class="ranking-pos">
+                            @if (row.Position == 1) { <span class="medal">🥇</span> }
+                            else if (row.Position == 2) { <span class="medal">🥈</span> }
+                            else if (row.Position == 3) { <span class="medal">🥉</span> }
+                            else { <span class="pos-num">@row.Position</span> }
+                        </div>
+                        <!-- Avatar + Nome + Nível -->
+                        <MudAvatar Style="@($"width:38px;height:38px;border:2px solid {(isMe ? "#00C9C9" : "#2A2A2A")};flex-shrink:0;")"
+                                   Image="@row.AvatarUrl"
+                                   Icon="@(string.IsNullOrEmpty(row.AvatarUrl) ? Icons.Material.Filled.Person : null)"
+                                   Color="Color.Default" />
+                        <div class="ranking-name-col">
+                            <MudText Typo="Typo.body2"
+                                     Style="@($"font-weight:{(isMe ? 700 : 500)};color:{(isMe ? "#00C9C9" : "inherit")};")">
+                                @row.UserName @(isMe ? " (você)" : "")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="opacity:.5;">@row.Level</MudText>
+                        </div>
+                        <!-- XP -->
+                        <div class="ranking-xp">
+                            <MudText Typo="Typo.body2"
+                                     Style="@($"font-weight:700;color:{(row.Position <= 3 ? "#00C9C9" : "inherit")};")">
+                                @row.XpEarned XP
+                            </MudText>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    };
+}
+
+<style>
+    .ranking-table { display: flex; flex-direction: column; gap: 4px; }
+    .ranking-row {
+        display: grid;
+        grid-template-columns: 44px 42px 1fr auto;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border-radius: 10px;
+        background: #141414;
+        border: 1px solid #1E1E1E;
+        transition: transform .2s, border-color .2s;
+    }
+    .ranking-row:hover { border-color: rgba(0,201,201,.2); transform: translateX(2px); }
+    .ranking-row--me {
+        background: rgba(0,201,201,.08) !important;
+        border-color: rgba(0,201,201,.35) !important;
+    }
+    .ranking-row--top1 { border-color: rgba(255,215,0,.3) !important; }
+    .ranking-row--top2 { border-color: rgba(192,192,192,.3) !important; }
+    .ranking-row--top3 { border-color: rgba(205,127,50,.3) !important; }
+    .ranking-pos { display: flex; align-items: center; justify-content: center; }
+    .medal { font-size: 1.4rem; }
+    .pos-num { font-weight: 700; opacity: .5; font-size: .9rem; text-align: center; width: 100%; }
+    .ranking-name-col { min-width: 0; overflow: hidden; }
+    .ranking-xp { white-space: nowrap; }
+</style>

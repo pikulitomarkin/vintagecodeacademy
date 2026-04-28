@@ -12,4 +12,11 @@ public interface IPdfExtractorService
         Stream pdfStream,
         int chunkSize = 1500,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Extrai o texto completo do PDF página a página, sem chunking.
+    /// </summary>
+    Task<PdfExtractionResult> ExtractAsync(
+        Stream pdfStream,
+        CancellationToken cancellationToken = default);
 }

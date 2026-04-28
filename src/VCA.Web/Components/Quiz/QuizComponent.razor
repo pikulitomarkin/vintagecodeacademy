@@ -1,0 +1,169 @@
+@using VCA.Web.Services
+@inject CourseHttpService CourseService
+
+@if (_state == QuizState.Loading)
+{
+    <div class="d-flex flex-column gap-3">
+        <MudSkeleton Width="80%" Height="24px" />
+        @for (var i = 0; i < 4; i++)
+        {
+            <MudSkeleton Width="100%" Height="48px" Style="border-radius:10px;" />
+        }
+    </div>
+}
+else if (_state == QuizState.Error)
+{
+    <MudAlert Severity="Severity.Warning" Style="border-radius:10px;">
+        Não foi possível carregar o quiz no momento.
+    </MudAlert>
+}
+else if (_state == QuizState.Completed)
+{
+    <!-- Tela de resultado final -->
+    <div class="text-center py-4">
+        <MudText Typo="Typo.h4" Style="font-weight:800;color:@ScoreColor();">
+            @_result!.CorrectAnswers / @_result.TotalQuestions
+        </MudText>
+        <MudText Typo="Typo.body1" Style="opacity:.7;margin-top:4px;">questões corretas</MudText>
+
+        @if (_result.XpEarned > 0)
+        {
+            <MudChip Color="Color.Primary" Variant="Variant.Filled"
+                     Icon="Icons.Material.Filled.Bolt"
+                     Style="margin-top:12px;font-weight:700;font-size:1rem;animation:xp-pop .4s cubic-bezier(.175,.885,.32,1.275) both;">
+                +@_result.XpEarned XP
+            </MudChip>
+        }
+
+        <MudDivider Class="my-4" />
+
+        <!-- Revisão questão por questão -->
+        @foreach (var (item, idx) in _result.Results.Select((r, i) => (r, i)))
+        {
+            <MudCard Class="mb-3 text-left"
+                     Style="@($"border-radius:12px;border:1px solid {(item.IsCorrect ? "rgba(0,230,118,.4)" : "rgba(255,82,82,.4)")};background:{(item.IsCorrect ? "rgba(0,230,118,.06)" : "rgba(255,82,82,.06)")};")">
+                <MudCardContent Class="py-3">
+                    <div class="d-flex align-start gap-2 mb-2">
+                        <MudIcon Icon="@(item.IsCorrect ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                 Style="@($"color:{(item.IsCorrect ? "#00E676" : "#FF5252")};margin-top:2px;")"
+                                 Size="Size.Small" />
+                        <MudText Typo="Typo.body2" Style="font-weight:600;">@($"Q{idx+1}. {item.Question}")</MudText>
+                    </div>
+                    <MudText Typo="Typo.caption"
+                             Style="@($"opacity:.7;padding-left:28px;color:{(item.IsCorrect ? "#00E676" : "#FF5252")};")">
+                        Sua resposta: Opção @QuizComponent.OptionLetter(item.SelectedIndex)
+                    </MudText>
+                    @if (!item.IsCorrect)
+                    {
+                        <MudText Typo="Typo.caption" Style="opacity:.7;padding-left:28px;color:#00C9C9;">
+                            Correta: Opção @QuizComponent.OptionLetter(item.CorrectIndex)
+                        </MudText>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(item.Explanation))
+                    {
+                        <MudText Typo="Typo.caption" Style="opacity:.6;padding-left:28px;margin-top:4px;font-style:italic;">
+                            💡 @item.Explanation
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+    </div>
+}
+else
+{
+    <!-- Answering state: 1 questão por vez -->
+    var q = CurrentQuestion;
+    <div>
+        <!-- Progresso -->
+        <div class="d-flex justify-space-between align-center mb-2">
+            <MudText Typo="Typo.caption" Style="opacity:.5;">
+                Questão @(_currentIndex + 1) de @_quiz!.Questions.Count
+            </MudText>
+            <MudProgressLinear Value="@ProgressValue" Color="Color.Primary"
+                               Rounded Size="Size.Small" Style="width:120px;" />
+        </div>
+
+        <MudText Typo="Typo.subtitle1" Style="font-weight:600;margin-bottom:16px;line-height:1.5;">
+            @q!.Question
+        </MudText>
+
+        <!-- Alternativas -->
+        <div class="d-flex flex-column gap-2 mb-4">
+            @for (var optIdx = 0; optIdx < q.Options.Count; optIdx++)
+            {
+                var idx = optIdx;
+                var opt = q.Options[idx];
+                var isSelected = _selectedIndexes[_currentIndex] == idx;
+
+                <div class="quiz-option @(isSelected ? "quiz-option--selected" : "")"
+                     @onclick="@(() => SelectOption(idx))"
+                     style="cursor:pointer;">
+                    <div class="option-indicator">@OptionLetter(idx)</div>
+                    <MudText Typo="Typo.body2" Style="flex:1;">@opt</MudText>
+                    @if (isSelected)
+                    {
+                        <MudIcon Icon="Icons.Material.Filled.CheckCircle"
+                                 Size="Size.Small" Style="color:var(--mud-palette-primary);" />
+                    }
+                </div>
+            }
+        </div>
+
+        <!-- Navegação -->
+        <div class="d-flex justify-space-between gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       Style="border-radius:10px;" Size="Size.Small"
+                       Disabled="@(_currentIndex == 0)"
+                       OnClick="PreviousQuestion">
+                ← Anterior
+            </MudButton>
+
+            @if (_currentIndex < _quiz!.Questions.Count - 1)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Style="border-radius:10px;" Size="Size.Small"
+                           Disabled="@(_selectedIndexes[_currentIndex] < 0)"
+                           OnClick="NextQuestion">
+                    Próxima →
+                </MudButton>
+            }
+            else
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           Style="border-radius:10px;" Size="Size.Small"
+                           Disabled="@(!AllAnswered)"
+                           Loading="@_submitting"
+                           OnClick="SubmitAsync">
+                    Enviar ⚡
+                </MudButton>
+            }
+        </div>
+    </div>
+}
+
+<style>
+    .quiz-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1px solid #2A2A2A;
+        background: #141414;
+        transition: border-color .15s, background .15s;
+    }
+    .quiz-option:hover { border-color: rgba(0,201,201,.4); background: rgba(0,201,201,.04); }
+    .quiz-option--selected { border-color: var(--mud-palette-primary) !important; background: rgba(0,201,201,.1) !important; }
+    .option-indicator {
+        width: 28px; height: 28px; border-radius: 50%;
+        background: #2A2A2A; display: flex; align-items: center; justify-content: center;
+        font-size: .75rem; font-weight: 700; flex-shrink: 0;
+        color: var(--mud-palette-primary);
+    }
+    .quiz-option--selected .option-indicator { background: var(--mud-palette-primary); color: #000; }
+    @@keyframes xp-pop {
+        from { transform: scale(.85); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+    }
+</style>

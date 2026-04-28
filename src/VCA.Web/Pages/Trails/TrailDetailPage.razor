@@ -1,0 +1,160 @@
+@page "/trilhas/{TrailId:guid}"
+@using VCA.Web.Services
+@inject CourseHttpService CourseService
+@inject NavigationManager Nav
+
+<PageTitle>@(_trail?.Title ?? "Trilha") — VintageCodeAcademy</PageTitle>
+
+@if (_loading)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+        <MudSkeleton Width="60%" Height="48px" Class="mb-2" />
+        <MudSkeleton Width="40%" Height="24px" Class="mb-6" />
+        <MudSkeleton Width="100%" Height="8px" Class="mb-8" />
+        @for (var i = 0; i < 3; i++)
+        {
+            <MudSkeleton Width="100%" Height="64px" Class="mb-2" />
+        }
+    </MudContainer>
+}
+else if (_trail is null)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-12 text-center">
+        <MudIcon Icon="Icons.Material.Filled.ErrorOutline" Style="font-size:4rem;opacity:.4;" />
+        <MudText Typo="Typo.h6" Class="mt-4" Style="opacity:.6;">Trilha não encontrada.</MudText>
+        <MudButton Color="Color.Primary" Variant="Variant.Outlined" Class="mt-4"
+                   OnClick="@(() => Nav.NavigateTo("/trilhas"))">
+            Voltar
+        </MudButton>
+    </MudContainer>
+}
+else
+{
+    <!-- Header da trilha -->
+    <div Style="background:linear-gradient(135deg,rgba(0,201,201,.12) 0%,transparent 60%);border-bottom:1px solid #1E1E1E;">
+        <MudContainer MaxWidth="MaxWidth.Large" Class="py-6">
+            <div class="d-flex align-center mb-1">
+                <MudButton StartIcon="Icons.Material.Filled.ArrowBack"
+                           Color="Color.Default" Variant="Variant.Text" Size="Size.Small"
+                           OnClick="@(() => Nav.NavigateTo("/trilhas"))"
+                           Style="opacity:.6;margin-left:-8px;">
+                    Trilhas
+                </MudButton>
+            </div>
+
+            <div class="d-flex align-center gap-4 flex-wrap">
+                <MudAvatar Style="background:linear-gradient(135deg,#00C9C9,#007A7A);font-size:2rem;width:64px;height:64px;">
+                    @TrailsPage.GetTrailEmoji(_trail.Stack)
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-weight:800;">@_trail.Title</MudText>
+                    <div class="d-flex align-center gap-2 mt-1">
+                        <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                            @TrailsPage.LevelLabel(_trail.Level)
+                        </MudChip>
+                        <MudText Typo="Typo.body2" Style="opacity:.5;">@_trail.Stack</MudText>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Progresso geral -->
+            @if (_progress is not null)
+            {
+                var pct = _progress.TotalLessons > 0
+                    ? (int)Math.Round(_progress.CompletedLessons * 100.0 / _progress.TotalLessons)
+                    : 0;
+                <div class="mt-5">
+                    <div class="d-flex justify-space-between mb-1">
+                        <MudText Typo="Typo.caption" Style="opacity:.6;">
+                            @_progress.CompletedLessons / @_progress.TotalLessons aulas concluídas
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="color:var(--mud-palette-primary);font-weight:600;">
+                            @pct%
+                        </MudText>
+                    </div>
+                    <MudProgressLinear Value="@pct" Color="Color.Primary" Rounded Size="Size.Medium" />
+                </div>
+            }
+        </MudContainer>
+    </div>
+
+    <!-- Lista de módulos -->
+    <MudContainer MaxWidth="MaxWidth.Large" Class="py-6" Style="padding-bottom:100px;">
+        <MudText Typo="Typo.h6" Class="mb-4" Style="font-weight:700;">Módulos</MudText>
+
+        <MudExpansionPanels MultiExpansion Elevation="0">
+            @foreach (var module in _trail.Modules.OrderBy(m => m.Order))
+            {
+                var completedInModule = module.Lessons.Count(l => IsLessonCompleted(l.Id));
+                var isFirst = module.Order == _trail.Modules.Min(m => m.Order);
+
+                <MudExpansionPanel Style="background:#1A1A1A;border:1px solid #262626;border-radius:12px!important;margin-bottom:8px;"
+                                   IsInitiallyExpanded="@isFirst">
+                    <TitleContent>
+                        <div class="d-flex align-center justify-space-between w-100">
+                            <div class="d-flex align-center gap-3">
+                                <MudAvatar Style="background:#262626;width:36px;height:36px;font-size:.85rem;font-weight:700;color:var(--mud-palette-primary);">
+                                    @module.Order
+                                </MudAvatar>
+                                <MudText Style="font-weight:600;">@module.Title</MudText>
+                            </div>
+                            <MudText Typo="Typo.caption" Style="opacity:.5;margin-right:8px;">
+                                @completedInModule / @module.Lessons.Count
+                            </MudText>
+                        </div>
+                    </TitleContent>
+                    <ChildContent>
+                        <MudList Dense DisablePadding Style="margin-top:4px;">
+                            @foreach (var lesson in module.Lessons.OrderBy(l => l.Order))
+                            {
+                                var status = GetLessonStatus(lesson.Id, module, lesson);
+                                var icon = status switch
+                                {
+                                    LessonDisplayStatus.Completed => Icons.Material.Filled.CheckCircle,
+                                    LessonDisplayStatus.Available => Icons.Material.Filled.PlayCircleOutline,
+                                    _ => Icons.Material.Filled.Lock
+                                };
+                                var iconColor = status switch
+                                {
+                                    LessonDisplayStatus.Completed => "#00C9C9",
+                                    LessonDisplayStatus.Available => "rgba(255,255,255,.7)",
+                                    _ => "rgba(255,255,255,.2)"
+                                };
+                                var clickable = status != LessonDisplayStatus.Locked;
+
+                                <MudListItem Style="@($"border-radius:8px;margin-bottom:2px;opacity:{(clickable ? 1.0 : 0.45)};cursor:{(clickable ? "pointer" : "default")};");"
+                                             OnClick="@(clickable ? () => Nav.NavigateTo($"/aulas/{lesson.Id}") : null)">
+                                    <div class="d-flex align-center gap-3 w-100">
+                                        <MudIcon Icon="@icon" Style="@($"color:{iconColor};font-size:1.3rem;")" />
+                                        <div class="flex-grow-1">
+                                            <MudText Typo="Typo.body2" Style="font-weight:500;">@lesson.Title</MudText>
+                                        </div>
+                                        <MudChip Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                 Style="font-size:.7rem;opacity:.8;">
+                                            +@lesson.XpReward XP
+                                        </MudChip>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    </ChildContent>
+                </MudExpansionPanel>
+            }
+        </MudExpansionPanels>
+    </MudContainer>
+
+    <!-- Botão fixo "Próxima Aula" -->
+    @if (_nextLessonId.HasValue)
+    {
+        <div Style="position:fixed;bottom:0;left:0;right:0;padding:16px 24px;background:linear-gradient(to top,#0D0D0D 60%,transparent);z-index:100;">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <MudButton FullWidth Variant="Variant.Filled" Color="Color.Primary"
+                           Style="border-radius:14px;height:52px;font-weight:700;font-size:1rem;box-shadow:0 4px 24px rgba(0,201,201,.35);"
+                           StartIcon="Icons.Material.Filled.PlayArrow"
+                           OnClick="@GoToNextLesson">
+                    Próxima Aula
+                </MudButton>
+            </MudContainer>
+        </div>
+    }
+}

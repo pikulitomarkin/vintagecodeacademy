@@ -1,0 +1,88 @@
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="@VcaTheme.Instance" IsDarkMode="true" />
+
+<MudLayout>
+    <MudAppBar Elevation="0" Dense="true" Color="Color.Transparent" Class="px-2 py-2"
+               Style="backdrop-filter:blur(14px);background:rgba(13,13,13,0.78);border-bottom:1px solid rgba(255,80,80,0.18);">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Primary" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.subtitle1" Class="ml-2"
+                 Style="font-weight:700;letter-spacing:0.18rem;color:#f5f5f5;">VINTAGECODEACADEMY</MudText>
+        <MudChip T="string" Color="Color.Error" Variant="Variant.Filled" Size="Size.Small"
+                 Class="ml-3"
+                 Icon="@Icons.Material.Filled.AdminPanelSettings"
+                 Style="font-weight:800;letter-spacing:0.1rem;box-shadow:0 0 18px rgba(255,80,80,0.35);">
+            ADMIN MODE
+        </MudChip>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                       Color="Color.Default"
+                       Title="Voltar para o app do aluno"
+                       Href="/" />
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               Breakpoint="Breakpoint.Md"
+               Elevation="0"
+               ClipMode="DrawerClipMode.Always"
+               Width="280px"
+               Class="pa-0">
+        <MudPaper Square="true" Class="d-flex flex-column fill-height pa-4"
+                  Style="background:linear-gradient(180deg,#171010 0%,#0d0d0d 100%);border-right:1px solid rgba(255,80,80,0.14);">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-6">
+                <MudAvatar Size="Size.Large"
+                           Style="background:linear-gradient(135deg,#FF6B6B 0%,#8B1E1E 100%);color:#fff;font-weight:800;">
+                    <MudIcon Icon="@Icons.Material.Filled.Settings" />
+                </MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h6" Style="font-weight:800;letter-spacing:0.08rem;">Painel Admin</MudText>
+                    <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.5);">Gestão de conteúdo IA</MudText>
+                </MudStack>
+            </MudStack>
+
+            <MudNavMenu Dense="true" Rounded="true">
+                @foreach (var item in _menuItems)
+                {
+                    <MudNavLink Href="@item.Href"
+                                Match="@item.Match"
+                                Icon="@item.Icon"
+                                Class="mb-1"
+                                ActiveClass="mud-error-text"
+                                Style="border-radius:14px;padding:12px 14px;font-weight:600;">
+                        @item.Label
+                    </MudNavLink>
+                }
+            </MudNavMenu>
+
+            <MudSpacer />
+
+            <MudPaper Square="false" Elevation="0" Class="pa-3"
+                      Style="background:#1a1010;border:1px solid rgba(255,80,80,0.22);border-radius:18px;">
+                <MudText Typo="Typo.caption" Class="mb-1" Style="color:rgba(255,255,255,0.55);">Acesso restrito</MudText>
+                <MudText Typo="Typo.caption" Style="color:#FF8A8A;font-weight:600;">
+                    Apenas usuários com role <strong>Admin</strong>.
+                </MudText>
+            </MudPaper>
+        </MudPaper>
+    </MudDrawer>
+
+    <MudMainContent Style="min-height:100vh;background:radial-gradient(circle at top right, rgba(255,80,80,0.10), transparent 22%), linear-gradient(180deg,#111 0%,#0d0d0d 100%);">
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 pa-md-8">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private readonly MenuItem[] _menuItems =
+    [
+        new("Dashboard", "/admin", Icons.Material.Filled.Dashboard, NavLinkMatch.All),
+        new("Conteúdo", "/admin/conteudo", Icons.Material.Filled.LibraryBooks, NavLinkMatch.Prefix),
+    ];
+
+    private bool _drawerOpen = true;
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private sealed record MenuItem(string Label, string Href, string Icon, NavLinkMatch Match);
+}

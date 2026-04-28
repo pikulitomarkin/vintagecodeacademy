@@ -1,0 +1,23 @@
+<MudStack Spacing="1">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+        <MudText Typo="Typo.subtitle2" Style="font-weight:700;">@Level</MudText>
+        <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.64);">@CurrentXp / @MaxXp XP</MudText>
+    </MudStack>
+
+    <MudTooltip Text="@($"{CurrentXp:N0} / {MaxXp:N0} XP")">
+        <MudProgressLinear Value="@ProgressValue"
+                           Rounded="true"
+                           Color="Color.Primary"
+                           BufferValue="100"
+                           Size="Size.Large"
+                           Style="height:12px;background:rgba(255,255,255,0.08);box-shadow:0 0 18px rgba(0,201,201,0.14);" />
+    </MudTooltip>
+</MudStack>
+
+@code {
+    [Parameter] public int CurrentXp { get; set; }
+    [Parameter] public int MaxXp { get; set; }
+    [Parameter] public string Level { get; set; } = string.Empty;
+
+    private double ProgressValue => MaxXp <= 0 ? 0 : Math.Clamp(CurrentXp * 100d / MaxXp, 0, 100);
+}

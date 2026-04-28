@@ -1,33 +1,109 @@
 @inherits LayoutComponentBase
-@using MudBlazor
+@implements IDisposable
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<MudThemeProvider Theme="@VcaTheme.Instance" IsDarkMode="true" />
 
 <MudLayout>
-    <MudAppBar Elevation="1" Color="Color.Dark">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="ToggleDrawer" />
-        <MudText Typo="Typo.h6" Class="ml-3">VintageCodeAcademy</MudText>
+    <MudAppBar Elevation="0" Dense="true" Color="Color.Transparent" Class="px-2 py-2" Style="backdrop-filter:blur(14px);background:rgba(13,13,13,0.72);border-bottom:1px solid rgba(255,255,255,0.06);">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Primary" Edge="Edge.Start" OnClick="ToggleDrawer" />
+        <MudText Typo="Typo.subtitle1" Class="ml-2" Style="font-weight:700;letter-spacing:0.18rem;color:#f5f5f5;">VINTAGECODEACADEMY</MudText>
         <MudSpacer />
-        <MudIconButton Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" Href="/profile" />
+        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small" Style="font-weight:700;box-shadow:0 0 16px rgba(0,201,201,0.22);">
+            @_currentLevel
+        </MudChip>
     </MudAppBar>
 
-    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
-        <MudNavMenu>
-            <MudNavLink Href="/" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Início</MudNavLink>
-            <MudNavLink Href="/trails" Icon="@Icons.Material.Filled.School">Trilhas</MudNavLink>
-            <MudNavLink Href="/ranking" Icon="@Icons.Material.Filled.Leaderboard">Ranking</MudNavLink>
-            <MudNavLink Href="/labs" Icon="@Icons.Material.Filled.Science">VCA Labs</MudNavLink>
-            <MudNavLink Href="/profile" Icon="@Icons.Material.Filled.Person">Meu Perfil</MudNavLink>
-        </MudNavMenu>
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Responsive"
+               Breakpoint="Breakpoint.Md"
+               Elevation="0"
+               ClipMode="DrawerClipMode.Always"
+               Width="280px"
+               Class="pa-0">
+        <MudPaper Square="true" Class="d-flex flex-column fill-height pa-4" Style="background:linear-gradient(180deg,#121212 0%,#0d0d0d 100%);border-right:1px solid rgba(255,255,255,0.06);">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-6">
+                <MudAvatar Size="Size.Large" Style="background:linear-gradient(135deg,#00c9c9 0%,#0a7f7f 100%);color:#041414;font-weight:800;">VCA</MudAvatar>
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.h6" Style="font-weight:800;letter-spacing:0.08rem;">VCA</MudText>
+                    <MudText Typo="Typo.caption" Style="color:rgba(255,255,255,0.6);">Code like a quest</MudText>
+                </MudStack>
+            </MudStack>
+
+            <MudNavMenu Dense="true" Rounded="true">
+                @foreach (var item in _menuItems)
+                {
+                    <MudNavLink Href="@item.Href"
+                                Match="@item.Match"
+                                Icon="@item.Icon"
+                                Class="mb-1"
+                                ActiveClass="mud-primary-text"
+                                Style="border-radius:14px;padding:12px 14px;font-weight:600;">
+                        @item.Label
+                    </MudNavLink>
+                }
+            </MudNavMenu>
+
+            <MudSpacer />
+
+            <MudPaper Square="false" Elevation="0" Class="pa-3" Style="background:#151515;border:1px solid rgba(0,201,201,0.18);border-radius:18px;">
+                <MudText Typo="Typo.caption" Class="mb-1" Style="color:rgba(255,255,255,0.6);">Nível atual</MudText>
+                <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Style="font-weight:700;box-shadow:0 0 18px rgba(0,201,201,0.24);">
+                    @_currentLevel
+                </MudChip>
+            </MudPaper>
+        </MudPaper>
     </MudDrawer>
 
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="my-6">
+    <MudMainContent Style="min-height:100vh;background:radial-gradient(circle at top right, rgba(0,201,201,0.12), transparent 22%), linear-gradient(180deg,#111 0%,#0d0d0d 100%);">
+        <MudContainer MaxWidth="MaxWidth.False" Class="pa-4 pa-md-8">
             @Body
         </MudContainer>
     </MudMainContent>
 </MudLayout>
 
 @code {
+    private readonly MenuItem[] _menuItems =
+    [
+        new("Home", "/", Icons.Material.Filled.Home, NavLinkMatch.All),
+        new("Trilhas", "/trails", Icons.Material.Filled.AutoStories, NavLinkMatch.Prefix),
+        new("Ranking", "/ranking", Icons.Material.Filled.Leaderboard, NavLinkMatch.Prefix),
+        new("Vintage Labs", "/labs", Icons.Material.Filled.Science, NavLinkMatch.Prefix),
+        new("Perfil", "/profile", Icons.Material.Filled.Person, NavLinkMatch.Prefix)
+    ];
+
     private bool _drawerOpen = true;
+    private string _currentLevel = "Rookie";
+
+    protected override async Task OnInitializedAsync()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
+        await RefreshCurrentLevelAsync();
+    }
+
+    public void Dispose()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+    }
 
     private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> _)
+    {
+        _ = InvokeAsync(RefreshCurrentLevelAsync);
+    }
+
+    private async Task RefreshCurrentLevelAsync()
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+        _currentLevel = user.FindFirst("level")?.Value
+            ?? user.FindFirst("user_level")?.Value
+            ?? user.FindFirst("role")?.Value
+            ?? "Rookie";
+
+        StateHasChanged();
+    }
+
+    private sealed record MenuItem(string Label, string Href, string Icon, NavLinkMatch Match);
 }

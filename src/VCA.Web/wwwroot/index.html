@@ -4,24 +4,103 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>VintageCodeAcademy</title>
     <base href="/" />
+    <title>VintageCodeAcademy | Ensino Gamificado de Programação</title>
 
-    <!-- MudBlazor CSS -->
-    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <meta name="description" content="VintageCodeAcademy é uma plataforma gratuita de ensino gamificado de programação com trilhas, quizzes, ranking e IA generativa." />
+    <meta name="keywords" content="programação, gamificação, blazor, .NET, trilhas de aprendizado, IA, quizzes, ranking" />
+    <meta name="author" content="Vintage DevStack" />
+    <meta name="robots" content="index,follow" />
+    <meta name="theme-color" content="#0D0D0D" />
+    <meta property="og:title" content="VintageCodeAcademy" />
+    <meta property="og:description" content="Aprenda programação com quests, XP, badges, quizzes dinâmicos e IA generativa." />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="VintageCodeAcademy" />
+    <meta name="twitter:description" content="Ensino gamificado de programação com IA generativa, ranking e trilhas práticas." />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
 
-    <!-- Favicon e meta -->
-    <meta name="description" content="Plataforma educacional gratuita com ensino gamificado de programação." />
+    <style>
+        html, body {
+            margin: 0;
+            min-height: 100%;
+            background: #0D0D0D;
+            color: #F5F5F5;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-image: radial-gradient(circle at top right, rgba(0, 201, 201, 0.16), transparent 20%), linear-gradient(180deg, #111111 0%, #0D0D0D 100%);
+        }
+
+        #app {
+            min-height: 100vh;
+        }
+
+        .loading-shell {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .loading-ring {
+            width: 72px;
+            height: 72px;
+            border-radius: 999px;
+            border: 3px solid rgba(255,255,255,0.08);
+            border-top-color: #00C9C9;
+            box-shadow: 0 0 24px rgba(0, 201, 201, 0.22);
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+            letter-spacing: 0.18rem;
+            font-size: 0.8rem;
+            color: rgba(245,245,245,0.72);
+        }
+
+        #blazor-error-ui {
+            display: none;
+            position: fixed;
+            left: 1rem;
+            right: 1rem;
+            bottom: 1rem;
+            padding: 1rem 1.25rem;
+            border-radius: 16px;
+            background: rgba(26, 26, 26, 0.94);
+            border: 1px solid rgba(255, 107, 107, 0.32);
+            box-shadow: 0 0 24px rgba(0, 0, 0, 0.28);
+        }
+
+        #blazor-error-ui .reload,
+        #blazor-error-ui .dismiss {
+            color: #00C9C9;
+            margin-left: 0.75rem;
+            text-decoration: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
 </head>
 
 <body>
     <div id="app">
-        <svg xmlns="http://www.w3.org/2000/svg" class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <div class="loading-shell">
+            <div class="loading-ring"></div>
+            <div class="loading-text">CARREGANDO VCA</div>
+        </div>
     </div>
 
     <div id="blazor-error-ui">
@@ -30,7 +109,6 @@
         <a class="dismiss">X</a>
     </div>
 
-    <!-- MudBlazor JS -->
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="_framework/blazor.webassembly.js"></script>
 </body>

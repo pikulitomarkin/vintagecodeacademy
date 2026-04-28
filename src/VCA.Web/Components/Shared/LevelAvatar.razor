@@ -1,0 +1,20 @@
+<MudBadge Content="@Level"
+          Overlap="true"
+          Origin="Origin.BottomRight"
+          Color="Color.Primary"
+          Bordered="true"
+          Class="level-avatar-badge">
+    <MudAvatar Image="@AvatarUrl"
+               Icon="@(string.IsNullOrWhiteSpace(AvatarUrl) ? Icons.Material.Filled.Person : null)"
+               Alt="Avatar do usuário"
+               Style="@AvatarStyle">
+    </MudAvatar>
+</MudBadge>
+
+@code {
+    [Parameter] public string? AvatarUrl { get; set; }
+    [Parameter] public int Level { get; set; }
+    [Parameter] public int Size { get; set; } = 64;
+
+    private string AvatarStyle => $"width:{Size}px;height:{Size}px;background:linear-gradient(135deg,#1a1a1a 0%,#222 100%);border:2px solid rgba(0,201,201,0.34);box-shadow:0 0 18px rgba(0,201,201,0.18);";
+}

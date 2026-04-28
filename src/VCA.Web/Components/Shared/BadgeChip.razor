@@ -1,0 +1,25 @@
+<MudTooltip Text="@TooltipText">
+    <MudChip T="string"
+             Color="@(IsEarned ? Color.Primary : Color.Default)"
+             Variant="@(IsEarned ? Variant.Filled : Variant.Outlined)"
+             Size="Size.Small"
+             Style="@ChipStyle">
+        @BadgeCode.ToUpperInvariant() · @BadgeName
+    </MudChip>
+</MudTooltip>
+
+@code {
+    [Parameter] public string BadgeCode { get; set; } = string.Empty;
+    [Parameter] public string BadgeName { get; set; } = string.Empty;
+    [Parameter] public DateTime? EarnedAt { get; set; }
+
+    private bool IsEarned => EarnedAt.HasValue;
+
+    private string TooltipText => IsEarned
+        ? $"Conquistado em {EarnedAt:dd/MM/yyyy HH:mm}"
+        : "Badge ainda não conquistado";
+
+    private string ChipStyle => IsEarned
+        ? "font-weight:700;box-shadow:0 0 18px rgba(0,201,201,0.28);border:1px solid rgba(0,201,201,0.32);"
+        : "font-weight:700;opacity:0.48;border:1px dashed rgba(255,255,255,0.16);";
+}

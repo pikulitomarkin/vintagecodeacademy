@@ -1,0 +1,70 @@
+@using VCA.Web.Services
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="font-weight:700;">✏️ Editar Perfil</MudText>
+    </TitleContent>
+
+    <DialogContent>
+        <MudStack Spacing="4" Class="py-2">
+
+            <!-- Preview + upload de avatar -->
+            <div class="d-flex flex-column align-center gap-3">
+                <MudAvatar Style="width:88px;height:88px;border:2px solid rgba(0,201,201,.5);"
+                           Image="@_avatarPreview"
+                           Icon="@(string.IsNullOrEmpty(_avatarPreview) ? Icons.Material.Filled.Person : null)"
+                           Color="Color.Default" />
+
+                <MudButton StartIcon="Icons.Material.Filled.CloudUpload"
+                           Variant="Variant.Outlined" Color="Color.Primary"
+                           Style="border-radius:10px;"
+                           Size="Size.Small"
+                           HtmlTag="label"
+                           for="avatar-file-input">
+                    Escolher imagem
+                </MudButton>
+
+                <!-- Input nativo oculto -->
+                <InputFile id="avatar-file-input"
+                           accept="image/png,image/jpeg,image/webp"
+                           style="display:none;"
+                           OnChange="HandleAvatarSelectedAsync" />
+
+                @if (!string.IsNullOrEmpty(_avatarError))
+                {
+                    <MudText Typo="Typo.caption" Style="color:#FF5252;">@_avatarError</MudText>
+                }
+                @if (_uploadingAvatar)
+                {
+                    <MudProgressCircular Size="Size.Small" Color="Color.Primary" Indeterminate />
+                }
+            </div>
+
+            <!-- Nome -->
+            <MudTextField @bind-Value="_name"
+                          Label="Nome de exibição"
+                          Variant="Variant.Outlined"
+                          Counter="60"
+                          MaxLength="60"
+                          Immediate
+                          Error="@(!string.IsNullOrEmpty(_nameError))"
+                          ErrorText="@_nameError"
+                          Style="border-radius:10px;" />
+        </MudStack>
+    </DialogContent>
+
+    <DialogActions>
+        <MudButton Variant="Variant.Text" Color="Color.Default"
+                   OnClick="Cancel" Style="border-radius:10px;">
+            Cancelar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   Style="border-radius:10px;font-weight:700;"
+                   Loading="@_saving"
+                   Disabled="@(!IsValid)"
+                   OnClick="SaveAsync">
+            Salvar
+        </MudButton>
+    </DialogActions>
+</MudDialog>

@@ -1,0 +1,161 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using VCA.Web.Services
+@inject AdminHttpService Admin
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.subtitle2" Style="opacity:.6;">Aula</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4" Style="font-weight:700;">@LessonTitle</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_difficulty" Label="Dificuldade" Variant="Variant.Outlined" Dense="true">
+                    <MudSelectItem Value="@("Beginner")">Iniciante</MudSelectItem>
+                    <MudSelectItem Value="@("Intermediate")">Intermediário</MudSelectItem>
+                    <MudSelectItem Value="@("Advanced")">Avançado</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudTextField T="string" @bind-Value="_stack" Label="Stack" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudCheckBox T="bool" @bind-Value="_generateQuiz" Label="Gerar quiz" Color="Color.Primary" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudNumericField T="int" @bind-Value="_quizCount" Label="Questões do quiz"
+                                 Min="3" Max="20" Variant="Variant.Outlined" />
+            </MudItem>
+
+            <MudItem xs="12">
+                <MudFileUpload T="IBrowserFile" FilesChanged="OnFileSelected" Accept=".pdf" MaximumFileCount="1">
+                    <ActivatorContent>
+                        <MudButton HtmlTag="label"
+                                   Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.UploadFile"
+                                   FullWidth="true">
+                            @(_file?.Name ?? "Selecionar PDF (máx. 50MB)")
+                        </MudButton>
+                    </ActivatorContent>
+                </MudFileUpload>
+            </MudItem>
+
+            @if (_processing || _events.Count > 0)
+            {
+                <MudItem xs="12">
+                    <MudPaper Class="pa-3" Style="background:#0F0F0F;border:1px solid #222;border-radius:12px;max-height:240px;overflow:auto;">
+                        @foreach (var ev in _events)
+                        {
+                            <MudStack Row="true" Spacing="2" Class="mb-1">
+                                <MudIcon Icon="@StageIcon(ev.Stage)" Size="Size.Small"
+                                         Style="@($"color:{StageColor(ev.Stage, ev.IsError)};")" />
+                                <MudText Typo="Typo.caption" Style="font-family:monospace;">
+                                    [@ev.Stage] @ev.Current/@ev.Total — @ev.Message
+                                </MudText>
+                            </MudStack>
+                        }
+                    </MudPaper>
+                    @if (_processing && _lastEvent is not null && _lastEvent.Total > 0)
+                    {
+                        <MudProgressLinear Color="Color.Primary"
+                                           Value="@(_lastEvent.Total == 0 ? 0 : 100.0 * _lastEvent.Current / _lastEvent.Total)"
+                                           Class="mt-2" />
+                    }
+                    else if (_processing)
+                    {
+                        <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mt-2" />
+                    }
+                </MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_processing">Cancelar</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                   OnClick="StartAsync"
+                   Disabled="@(_file is null || _processing)">
+            @(_processing ? "Processando..." : "Processar")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    [Parameter] public Guid LessonId { get; set; }
+    [Parameter] public string LessonTitle { get; set; } = string.Empty;
+
+    private IBrowserFile? _file;
+    private string _difficulty = "Intermediate";
+    private string _stack = "csharp";
+    private bool _generateQuiz = true;
+    private int _quizCount = 10;
+
+    private bool _processing;
+    private readonly List<ProcessPdfProgressEventDto> _events = new();
+    private ProcessPdfProgressEventDto? _lastEvent;
+
+    private void OnFileSelected(IBrowserFile file)
+    {
+        _file = file;
+    }
+
+    private async Task StartAsync()
+    {
+        if (_file is null) return;
+        _processing = true;
+        _events.Clear();
+        _lastEvent = null;
+
+        try
+        {
+            await using var stream = _file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024);
+            var final = await Admin.ProcessPdfStreamAsync(
+                LessonId, stream, _file.Name, _difficulty, _stack, _generateQuiz, _quizCount,
+                async ev =>
+                {
+                    _events.Add(ev);
+                    _lastEvent = ev;
+                    await InvokeAsync(StateHasChanged);
+                });
+
+            if (final?.IsError == true)
+            {
+                Snackbar.Add($"Erro no pipeline: {final.Message}", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add("PDF processado com sucesso.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+                return;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Falha: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processing = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private static string StageIcon(string stage) => stage switch
+    {
+        "starting" => Icons.Material.Filled.PlayArrow,
+        "chunked" => Icons.Material.Filled.Segment,
+        "generating_lesson" => Icons.Material.Filled.AutoAwesome,
+        "generating_quiz" => Icons.Material.Filled.Quiz,
+        "completed" => Icons.Material.Filled.CheckCircle,
+        "error" => Icons.Material.Filled.Error,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private static string StageColor(string stage, bool isError) =>
+        isError ? "#FF6B6B" :
+        stage == "completed" ? "#34D399" :
+        "#00C9C9";
+}

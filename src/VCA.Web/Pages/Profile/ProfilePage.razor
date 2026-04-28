@@ -1,0 +1,167 @@
+@page "/perfil"
+@page "/perfil/{UserId:guid}"
+@using VCA.Web.Services
+@using VCA.Web.Components.Shared
+@inject UserHttpService UserService
+@inject AuthService AuthService
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+
+<PageTitle>@(_profile?.Name ?? "Perfil") — VintageCodeAcademy</PageTitle>
+
+@if (_loading)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+        <div class="d-flex gap-4 align-center mb-6">
+            <MudSkeleton SkeletonType="SkeletonType.Circle" Width="80px" Height="80px" />
+            <div class="flex-grow-1">
+                <MudSkeleton Width="50%" Height="32px" Class="mb-2" />
+                <MudSkeleton Width="35%" Height="20px" />
+            </div>
+        </div>
+        <MudSkeleton Width="100%" Height="16px" Class="mb-6" Style="border-radius:8px;" />
+        <MudSkeleton Width="100%" Height="120px" Class="mb-4" Style="border-radius:12px;" />
+        <MudSkeleton Width="100%" Height="80px" Style="border-radius:12px;" />
+    </MudContainer>
+}
+else if (_profile is null)
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-12 text-center">
+        <MudIcon Icon="Icons.Material.Filled.PersonOff" Style="font-size:4rem;opacity:.4;" />
+        <MudText Typo="Typo.h6" Class="mt-4" Style="opacity:.6;">Perfil não encontrado.</MudText>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Medium" Class="py-6">
+
+        <!-- Header: Avatar + Nome + Nível + streak -->
+        <div Style="background:linear-gradient(135deg,rgba(0,201,201,.1) 0%,transparent 60%);border-radius:20px;padding:24px;border:1px solid #1E1E1E;margin-bottom:24px;">
+            <div class="d-flex align-start justify-space-between flex-wrap gap-3">
+                <div class="d-flex align-center gap-4">
+                    <LevelAvatar AvatarUrl="@_profile.AvatarUrl"
+                                 Level="@LevelNumber(_profile.Level)"
+                                 Size="80" />
+                    <div>
+                        <MudText Typo="Typo.h5" Style="font-weight:800;line-height:1.2;">@_profile.Name</MudText>
+                        <MudChip Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined"
+                                 Style="margin-top:4px;font-size:.75rem;">
+                            @_profile.Level
+                        </MudChip>
+                        @if (_profile.StreakDays > 0)
+                        {
+                            <MudChip Size="Size.Small" Color="Color.Warning" Variant="Variant.Text"
+                                     Icon="Icons.Material.Filled.LocalFire"
+                                     Style="margin-top:4px;font-size:.75rem;">
+                                @_profile.StreakDays dias de streak
+                            </MudChip>
+                        }
+                        <MudText Typo="Typo.caption" Style="opacity:.45;display:block;margin-top:4px;">
+                            Membro desde @_profile.CreatedAt.ToString("MMMM yyyy")
+                        </MudText>
+                    </div>
+                </div>
+                @if (_isOwnProfile)
+                {
+                    <MudButton StartIcon="Icons.Material.Filled.Edit"
+                               Variant="Variant.Outlined" Color="Color.Primary"
+                               Style="border-radius:10px;"
+                               OnClick="OpenEditModal">
+                        Editar
+                    </MudButton>
+                }
+            </div>
+
+            <!-- XP Bar -->
+            <div class="mt-5">
+                <XpBar CurrentXp="@_xpInLevel"
+                       MaxXp="@_xpLevelMax"
+                       Level="@_profile.Level" />
+                <MudText Typo="Typo.caption" Style="opacity:.45;margin-top:4px;">
+                    @_profile.Xp.ToString("N0") XP total acumulado
+                </MudText>
+            </div>
+        </div>
+
+        <!-- Badges -->
+        <MudCard Class="mb-4" Style="background:#1A1A1A;border:1px solid #262626;border-radius:16px;">
+            <MudCardContent>
+                <MudText Typo="Typo.subtitle1" Style="font-weight:700;margin-bottom:12px;">🏅 Conquistas</MudText>
+                @if (!_allBadges.Any())
+                {
+                    <MudText Typo="Typo.caption" Style="opacity:.5;">Nenhum badge disponível.</MudText>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-2">
+                        @foreach (var badge in _allBadges)
+                        {
+                            <BadgeChip BadgeCode="@badge.Code"
+                                       BadgeName="@badge.Name"
+                                       EarnedAt="@badge.EarnedAt" />
+                        }
+                    </div>
+                }
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Trilhas concluídas -->
+        @if (_profile.CompletedTrails?.Any() == true)
+        {
+            <MudCard Class="mb-4" Style="background:#1A1A1A;border:1px solid #262626;border-radius:16px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;margin-bottom:12px;">🗺️ Trilhas Concluídas</MudText>
+                    <MudList Dense DisablePadding>
+                        @foreach (var trail in _profile.CompletedTrails)
+                        {
+                            <MudListItem>
+                                <div class="d-flex align-center gap-3">
+                                    <MudIcon Icon="Icons.Material.Filled.CheckCircle"
+                                             Style="color:#00C9C9;" Size="Size.Small" />
+                                    <div>
+                                        <MudText Typo="Typo.body2" Style="font-weight:600;">@trail.Title</MudText>
+                                        <MudText Typo="Typo.caption" Style="opacity:.5;">
+                                            @trail.Stack · concluída em @trail.CompletedAt.ToString("dd/MM/yyyy")
+                                        </MudText>
+                                    </div>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- Vintage Labs -->
+        @if (_profile.LabContributions?.Any() == true)
+        {
+            <MudCard Class="mb-4" Style="background:#1A1A1A;border:1px solid #262626;border-radius:16px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight:700;margin-bottom:12px;">🔬 Vintage Labs</MudText>
+                    <MudList Dense DisablePadding>
+                        @foreach (var lab in _profile.LabContributions)
+                        {
+                            var statusColor = lab.Status == "Accepted" ? "#00E676" :
+                                              lab.Status == "Rejected" ? "#FF5252" : "#FFEA00";
+                            <MudListItem>
+                                <div class="d-flex align-center justify-space-between gap-3">
+                                    <div>
+                                        <MudText Typo="Typo.body2" Style="font-weight:600;">@lab.ProjectTitle</MudText>
+                                        <MudText Typo="Typo.caption" Style="opacity:.5;">
+                                            Candidatura em @lab.AppliedAt.ToString("dd/MM/yyyy")
+                                        </MudText>
+                                    </div>
+                                    <MudChip Size="Size.Small" Variant="Variant.Outlined"
+                                             Style="@($"color:{statusColor};border-color:{statusColor};font-size:.7rem;")">
+                                        @lab.Status
+                                    </MudChip>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                </MudCardContent>
+            </MudCard>
+        }
+
+    </MudContainer>
+}

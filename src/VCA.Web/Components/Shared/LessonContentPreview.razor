@@ -1,0 +1,86 @@
+@* Componente compartilhado: renderiza o conteúdo gamificado de uma aula. *@
+
+<MudText Typo="Typo.caption" Style="opacity:.5;letter-spacing:.18rem;">PREVIEW</MudText>
+<MudText Typo="Typo.h6" Style="font-weight:800;margin-bottom:4px;">@(string.IsNullOrWhiteSpace(Title) ? "(sem título)" : Title)</MudText>
+<MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.Bolt" Size="Size.Small" Style="color:#00C9C9;" />
+    <MudText Typo="Typo.body2" Style="color:#00C9C9;font-weight:600;">+@XpReward XP ao concluir</MudText>
+</MudStack>
+
+@if (!string.IsNullOrWhiteSpace(Mission))
+{
+    <MudAlert Severity="Severity.Info" Class="mb-3"
+              Style="background:rgba(0,201,201,.1);border:1px solid rgba(0,201,201,.3);border-radius:14px;">
+        <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:4px;">🎯 Missão</MudText>
+        <MudText Typo="Typo.body2">@Mission</MudText>
+    </MudAlert>
+}
+
+@if (!string.IsNullOrWhiteSpace(RealContext))
+{
+    <MudPaper Class="pa-3 mb-3" Elevation="0" Style="background:#141414;border:1px solid #222;border-radius:14px;">
+        <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:6px;color:var(--mud-palette-primary);">🔥 Contexto Real</MudText>
+        <MudText Typo="Typo.body2" Style="line-height:1.7;opacity:.85;white-space:pre-wrap;">@RealContext</MudText>
+    </MudPaper>
+}
+
+@if (!string.IsNullOrWhiteSpace(Concept))
+{
+    <MudPaper Class="pa-3 mb-3" Elevation="0" Style="background:#1A1A1A;border:1px solid #262626;border-radius:14px;">
+        <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:8px;">📚 Conceito</MudText>
+        <MudText Typo="Typo.body2" Style="line-height:1.7;white-space:pre-wrap;">@Concept</MudText>
+    </MudPaper>
+}
+
+@if (!string.IsNullOrWhiteSpace(ChallengeDescription))
+{
+    <MudPaper Class="pa-3 mb-3" Elevation="0"
+              Style="background:linear-gradient(135deg,rgba(0,201,201,.08),rgba(0,122,122,.06));border:1px solid rgba(0,201,201,.25);border-radius:14px;">
+        <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:8px;color:var(--mud-palette-primary);">💻 Desafio Rápido</MudText>
+        <MudText Typo="Typo.body2" Style="line-height:1.7;margin-bottom:8px;">@ChallengeDescription</MudText>
+        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Filled">+@ChallengeXp XP</MudChip>
+    </MudPaper>
+}
+
+@if (!string.IsNullOrWhiteSpace(ExampleCode))
+{
+    <MudPaper Class="mb-3" Elevation="0" Style="background:#0A0A0A;border:1px solid #1E1E1E;border-radius:14px;overflow:hidden;">
+        <div style="background:#1E1E1E;padding:8px 16px;display:flex;align-items:center;gap:8px;">
+            <div style="width:12px;height:12px;border-radius:50%;background:#FF5F57;"></div>
+            <div style="width:12px;height:12px;border-radius:50%;background:#FEBC2E;"></div>
+            <div style="width:12px;height:12px;border-radius:50%;background:#28C840;"></div>
+            <MudText Typo="Typo.caption" Style="margin-left:8px;opacity:.5;font-family:monospace;">🧩 @ExampleLanguage</MudText>
+        </div>
+        <div style="padding:16px;">
+            <pre style="font-family:'Courier New',monospace;font-size:.85rem;line-height:1.6;color:#ABB2BF;white-space:pre-wrap;word-break:break-all;margin:0;">@ExampleCode</pre>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(ExampleExplanation))
+        {
+            <div style="padding:8px 16px 12px;border-top:1px solid #1E1E1E;">
+                <MudText Typo="Typo.caption" Style="opacity:.7;">@ExampleExplanation</MudText>
+            </div>
+        }
+    </MudPaper>
+}
+
+@if (!string.IsNullOrWhiteSpace(Summary))
+{
+    <MudPaper Class="pa-3" Elevation="0" Style="background:#1A1A1A;border:1px solid #262626;border-radius:14px;">
+        <MudText Typo="Typo.subtitle2" Style="font-weight:700;margin-bottom:8px;">🏆 Resumo</MudText>
+        <MudText Typo="Typo.body2" Style="line-height:1.7;opacity:.85;white-space:pre-wrap;">@Summary</MudText>
+    </MudPaper>
+}
+
+@code {
+    [Parameter] public string Title { get; set; } = string.Empty;
+    [Parameter] public int XpReward { get; set; }
+    [Parameter] public string Mission { get; set; } = string.Empty;
+    [Parameter] public string RealContext { get; set; } = string.Empty;
+    [Parameter] public string Concept { get; set; } = string.Empty;
+    [Parameter] public string ChallengeDescription { get; set; } = string.Empty;
+    [Parameter] public int ChallengeXp { get; set; }
+    [Parameter] public string ExampleLanguage { get; set; } = "csharp";
+    [Parameter] public string ExampleCode { get; set; } = string.Empty;
+    [Parameter] public string ExampleExplanation { get; set; } = string.Empty;
+    [Parameter] public string Summary { get; set; } = string.Empty;
+}

@@ -15,6 +15,9 @@ public class RankingService : IAsyncDisposable
 
     public RankingService(HttpClient http) => _http = http;
 
+    /// <summary>Expõe o HttpClient para uso interno pelos code-behinds da feature de Ranking.</summary>
+    internal HttpClient GetHttp() => _http;
+
     public async Task<List<Ranking.RankingDto>?> GetWeeklyRankingAsync()
         => await _http.GetFromJsonAsync<List<Ranking.RankingDto>>("api/ranking/weekly");
 
